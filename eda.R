@@ -147,7 +147,7 @@ train %>%
 
 cor(train$Heart_Rate, sqrt(train$Calories))
 
-# heart rate dist exponential
+# body temp dist exponential
 # strong pos cor better modeled by exponential than linear
 
 train %>%
