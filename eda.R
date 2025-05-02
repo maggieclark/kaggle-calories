@@ -119,7 +119,7 @@ cor(male$Weight/male$Height, male$Calories)
 
 # duration uniform
 # strong pos cor with increasing variance
-# stronger cor btwn duration and sqrt of calories
+# stronger cor btwn duration^2 and calories
 
 train %>%
   ggplot(aes(x=Duration)) +
@@ -131,7 +131,7 @@ train %>%
   geom_point(position='jitter')
 
 cor(train$Duration, train$Calories)
-cor(train$Duration, sqrt(train$Calories))
+cor(train$Duration^2, train$Calories)
 
 # heart rate dist normal
 # strong pos cor better modeled by exponential than linear
@@ -145,7 +145,8 @@ train %>%
   ggplot(aes(x=Heart_Rate, y=Calories)) +
   geom_point(position='jitter')
 
-cor(train$Heart_Rate, sqrt(train$Calories))
+cor(train$Heart_Rate, train$Calories)
+cor(train$Heart_Rate^2, train$Calories)
 
 # body temp dist exponential
 # strong pos cor better modeled by exponential than linear
@@ -160,4 +161,4 @@ train %>%
   geom_point(position='jitter')
 
 cor(train$Body_Temp, train$Calories)
-cor(train$Body_Temp, sqrt(train$Calories))
+cor(train$Body_Temp^2, train$Calories)
