@@ -33,18 +33,13 @@ rm(remaining, remaining1, remaining2, remaining3, remaining4)
 ### baseline polynomial model ###
 # 0.4 ish
 
-mod = lm(Calories ~ Age + I(Duration^2) + I(Heart_Rate^2) + I(Body_Temp^2), 
-   rbind(fold1,fold2,fold3,fold4))
+mod = glm(Calories ~ Age + I(Duration^2) + I(Heart_Rate^2) + I(Body_Temp^2), 
+   rbind(fold1,fold2,fold3,fold4),
+   family=poisson)
 
 summary(mod)
 
 yhat = predict(mod, fold5)
-
-# when < 0, predict 0
-
-yhat = unname(yhat)
-
-yhat[which(yhat<0)] <- 0
 
 # Root Mean Squared Logarithmic Error
 
@@ -66,7 +61,7 @@ degree <- 5
 #create k equal-sized folds
 folds <- cut(seq(1,nrow(train.shuffled)),breaks=K,labels=FALSE)
 
-#create object to hold MSE's of models
+#create object to hold rmsle's of models
 rmsle = matrix(data=NA,nrow=K,ncol=degree)
 
 #Perform K-fold cross validation
@@ -79,9 +74,9 @@ for(i in 1:K){
   
   #use k-fold cv to evaluate models
   for (j in 1:degree){
-    fit.train = lm(Calories ~ poly(Duration,j), data=trainData)
+    fit.train = glm(Calories ~ poly(Duration,j), data=trainData, family=poisson)
     fit.test = predict(fit.train, newdata=testData)
-    rmsle[i,j] = sqrt(mean((log(1+fit.test)-log(1+testData$score))^2))
+    rmsle[i,j] = sqrt(mean((log(1+fit.test)-log(1+testData$Calories))^2))
   }
 }
 
