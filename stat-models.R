@@ -4,6 +4,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 library(tidyr)
+library(MASS)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
@@ -55,9 +56,23 @@ sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
 ### poisson model ###
 # 2.6 ish
 
+# check assumptions
+
+# variance super inflated
+mean(train$Calories)
+var(train$Calories)
+
+# within sex - not better
+train %>% 
+  filter(Sex == 'female') %>% 
+  summarize(mean = mean(Calories),
+            variance = var(Calories))
+
+# model
+
 mod = glm(Calories ~ Age + Duration + Heart_Rate + Body_Temp, 
           rbind(fold1,fold2,fold3,fold4),
-          family=poisson)
+          family="poisson")
 
 summary(mod)
 
@@ -107,3 +122,13 @@ for(i in 1:K){
 
 #find MSE for each degree 
 colMeans(rmsle)
+
+### negative binomial ###
+# 0.2 ish
+
+summary(mod <- glm.nb(Calories ~ Age + Duration + Heart_Rate + Body_Temp, 
+                     rbind(fold1,fold2,fold3,fold4),))
+
+yhat = predict(mod, fold5, type = "response")
+
+sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
