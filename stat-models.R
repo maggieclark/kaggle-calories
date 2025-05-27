@@ -5,10 +5,15 @@ library(lubridate)
 library(ggplot2)
 library(tidyr)
 library(MASS)
+library(mpath)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 train = read_csv('train.csv')
+
+train = train %>% 
+  mutate(Female = case_when(Sex=='female' ~ 1,
+                            Sex=='male'~0))
 
 # create folds
 
@@ -28,7 +33,7 @@ remaining4  <- anti_join(remaining3, fold4, by = 'id')
 
 fold5 <- remaining4
 
-rm(remaining, remaining1, remaining2, remaining3, remaining4)
+rm(remaining1, remaining2, remaining3, remaining4)
 
 
 ### baseline polynomial model ###
@@ -124,11 +129,45 @@ for(i in 1:K){
 colMeans(rmsle)
 
 ### negative binomial ###
-# 0.2 ish
+# 0.22 ish
 
 summary(mod <- glm.nb(Calories ~ Age + Duration + Heart_Rate + Body_Temp, 
-                     rbind(fold1,fold2,fold3,fold4),))
+                     rbind(fold1,fold2,fold3,fold4),
+                     control = glm.control(maxit = 50)))
 
 yhat = predict(mod, fold5, type = "response")
 
 sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
+
+# try with all vars
+# 0.22 ish
+
+summary(mod <- glm.nb(Calories ~ Age + Height + Weight + Duration + Heart_Rate + Body_Temp + Female, 
+                      rbind(fold1,fold2,fold3,fold4),
+                      control = glm.control(maxit = 50)))
+
+yhat = predict(mod, fold5, type = "response")
+
+sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
+
+### regularized negative binomial ###
+# 0.19 ish
+
+i = sample(1:150000, 15000)
+small1 = fold1[i,]
+
+mod = cv.glmreg(Calories ~ Age + Height + Weight + Duration + Heart_Rate + Body_Temp + Female, 
+          small1,
+          family = "negbin",
+          theta=1)
+
+summary(mod)
+coef(mod)
+mod$lambda.which
+mod$lambda.optim
+
+yhat = predict(mod, fold5[,c(3:8, 10)], type = "response", lambda=mod$lambda.optim)
+
+sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
+
+### PCA negative binomial ###
