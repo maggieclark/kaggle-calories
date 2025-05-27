@@ -6,15 +6,17 @@ library(ggplot2)
 library(tidyr)
 library(MASS)
 library(mpath)
+library(FactoMineR)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 train = read_csv('train.csv')
 
-train = train %>% 
+train <- train %>% 
   mutate(Female = case_when(Sex=='female' ~ 1,
-                            Sex=='male'~0))
-
+                            Sex=='male'~0)) %>% 
+  dplyr::select(!Sex)
+                                                       
 # create folds
 
 set.seed(117)
@@ -170,4 +172,35 @@ yhat = predict(mod, fold5[,c(3:8, 10)], type = "response", lambda=mod$lambda.opt
 
 sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
 
+
 ### PCA negative binomial ###
+# 0.22 ish
+
+X = rbind(fold1,fold2,fold3,fold4) %>% 
+  dplyr::select(!c(id, Calories))
+
+pca_solution = PCA(X)
+pca_solution$eig
+
+pcs = pca_solution$ind$coord[,1:3]
+pcs = as.data.frame(pcs)
+pcs = cbind(pcs,Calories = rbind(fold1,fold2,fold3,fold4)$Calories)
+
+i = sample(1:600000, 15000)
+small_pcs = pcs[i,]
+
+mod = cv.glmreg(Calories ~ ., 
+                small_pcs,
+                family = "negbin",
+                theta=1)
+
+test = fold5 %>% 
+  dplyr::select(!c(id, Calories))
+pca_solution_test = PCA(test)
+pcs_test = pca_solution_test$ind$coord[,1:3]
+pcs_test = as.data.frame(pcs_test)
+
+
+yhat = predict(mod, pcs_test, type = "response", lambda=mod$lambda.optim)
+
+sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
