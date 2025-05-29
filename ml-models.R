@@ -294,6 +294,55 @@ for (f in 1:5){
   
 }
 
+### train on all data and predict ###
+
 # use learning rate 0.3
 # use 15 early stopping rounds
+# expected prediction accuracy is around 0.0625
 
+# eval data (subset of training)
+eval_index = sample(1:750000, 150000)
+
+eval_dataset = train[eval_index,]
+
+eval_mat = xgb.DMatrix(data=as.matrix(eval_dataset[,c(2:7,9)]),
+                       label=as.matrix(eval_dataset[,8]))
+
+# remaining training data
+train_dataset = train[-eval_index,]
+
+train_mat = xgb.DMatrix(data=as.matrix(train_dataset[,c(2:7,9)]),
+                        label=as.matrix(train_dataset[,8]))
+
+
+# test data
+
+test = read_csv('test.csv')
+
+test <- test %>% 
+  mutate(Female = case_when(Sex=='female' ~ 1,
+                            Sex=='male'~0)) %>% 
+  dplyr::select(!Sex)
+
+test_dataset = test %>% 
+  dplyr::select(!id) %>% 
+  as.matrix()
+
+# mod
+
+w = list(train=train_mat, eval=eval_mat)
+
+mod <- xgb.train(data = train_mat,
+                 nrounds = 1000,
+                 watchlist = w,
+                 early_stopping_rounds=15,
+                 objective="reg:squaredlogerror",
+                 learning_rate=0.3)
+
+yhat = predict(mod, test_dataset, validate_features = TRUE)
+
+# print
+
+submission = data.frame(id=test$id, Calories=yhat)
+
+write_csv(submission, 'mc_submission_5.29_1.csv')
