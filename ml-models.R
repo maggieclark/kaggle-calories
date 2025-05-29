@@ -108,50 +108,192 @@ sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
 
 folds = list(fold1, fold2, fold3, fold4, fold5)
 
+learning_rates = c(0.1, 0.3, 0.5, 0.7, 0.9)
 
+es5_rmsles = c(99,99,99,99,99)
 
-for (f in 1){
+for (f in 1:5){
+  
+  print(f)
   
   # complete training data for this fold
   training_folds = train %>% 
     anti_join(folds[[f]], by=join_by(id))
+  print('training folds complete')
   
   # eval data for this fold (subset of training)
   eval_index = sample(1:600000, 120000)
   
-  eval = training_folds[eval_index,]
+  eval_dataset = training_folds[eval_index,]
   
-  eval_mat = xgb.DMatrix(data=as.matrix(eval[1:10,c(2:7,9)]),
-                        label=as.matrix(eval[1:10,8]))
+  eval_mat = xgb.DMatrix(data=as.matrix(eval_dataset[,c(2:7,9)]),
+                        label=as.matrix(eval_dataset[,8]))
+  
+  print('eval data complete')
   
   # remaining training data
-  train = training_folds[-eval_index,]
+  train_dataset = training_folds[-eval_index,]
   
-  train_mat = xgb.DMatrix(data=as.matrix(train[1:10,c(2:7,9)]),
-                          label=as.matrix(train[1:10,8]))
+  train_mat = xgb.DMatrix(data=as.matrix(train_dataset[,c(2:7,9)]),
+                          label=as.matrix(train_dataset[,8]))
   
+  print('training data complete')
+  
+
   # test data (f)
   test_x = folds[[f]] %>% 
     dplyr::select(!c(id, Calories)) %>% 
     as.matrix()
   
+  print('test data complete')
+  
   # model
+  
+  lr = learning_rates[f]
+  print(lr)
+  
   w = list(train=train_mat, eval=eval_mat)
   
   mod <- xgb.train(data = train_mat,
                    nrounds = 1000,
                    watchlist = w,
                    early_stopping_rounds=5,
-                   objective="reg:squaredlogerror")
+                   objective="reg:squaredlogerror",
+                   learning_rate=lr)
+  
+  print('model trained')
   
   yhat = predict(mod, test_x, validate_features = TRUE)
   
-  print(sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2)))
+  print(sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2)))
+  es5_rmsles[f]=sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2))
   
 }
 
+# early stopping = 10
 
+es10_rmsles = c(99,99,99,99,99)
 
+for (f in 1:5){
+  
+  print(f)
+  
+  # complete training data for this fold
+  training_folds = train %>% 
+    anti_join(folds[[f]], by=join_by(id))
+  print('training folds complete')
+  
+  # eval data for this fold (subset of training)
+  eval_index = sample(1:600000, 120000)
+  
+  eval_dataset = training_folds[eval_index,]
+  
+  eval_mat = xgb.DMatrix(data=as.matrix(eval_dataset[,c(2:7,9)]),
+                        label=as.matrix(eval_dataset[,8]))
+  
+  print('eval data complete')
+  
+  # remaining training data
+  train_dataset = training_folds[-eval_index,]
+  
+  train_mat = xgb.DMatrix(data=as.matrix(train_dataset[,c(2:7,9)]),
+                          label=as.matrix(train_dataset[,8]))
+  
+  print('training data complete')
+  
 
+  # test data (f)
+  test_x = folds[[f]] %>% 
+    dplyr::select(!c(id, Calories)) %>% 
+    as.matrix()
+  
+  print('test data complete')
+  
+  # model
+  
+  lr = learning_rates[f]
+  print(lr)
+  
+  w = list(train=train_mat, eval=eval_mat)
+  
+  mod <- xgb.train(data = train_mat,
+                   nrounds = 1000,
+                   watchlist = w,
+                   early_stopping_rounds=10,
+                   objective="reg:squaredlogerror",
+                   learning_rate=lr)
+  
+  print('model trained')
+  
+  yhat = predict(mod, test_x, validate_features = TRUE)
+  
+  print(sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2)))
+  es10_rmsles[f]=sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2))
+  
+}
 
+# early stopping = 15
+
+es15_rmsles = c(99,99,99,99,99)
+
+for (f in 1:5){
+  
+  print(f)
+  
+  # complete training data for this fold
+  training_folds = train %>% 
+    anti_join(folds[[f]], by=join_by(id))
+  print('training folds complete')
+  
+  # eval data for this fold (subset of training)
+  eval_index = sample(1:600000, 120000)
+  
+  eval_dataset = training_folds[eval_index,]
+  
+  eval_mat = xgb.DMatrix(data=as.matrix(eval_dataset[,c(2:7,9)]),
+                         label=as.matrix(eval_dataset[,8]))
+  
+  print('eval data complete')
+  
+  # remaining training data
+  train_dataset = training_folds[-eval_index,]
+  
+  train_mat = xgb.DMatrix(data=as.matrix(train_dataset[,c(2:7,9)]),
+                          label=as.matrix(train_dataset[,8]))
+  
+  print('training data complete')
+  
+  
+  # test data (f)
+  test_x = folds[[f]] %>% 
+    dplyr::select(!c(id, Calories)) %>% 
+    as.matrix()
+  
+  print('test data complete')
+  
+  # model
+  
+  lr = learning_rates[f]
+  print(lr)
+  
+  w = list(train=train_mat, eval=eval_mat)
+  
+  mod <- xgb.train(data = train_mat,
+                   nrounds = 1000,
+                   watchlist = w,
+                   early_stopping_rounds=15,
+                   objective="reg:squaredlogerror",
+                   learning_rate=lr)
+  
+  print('model trained')
+  
+  yhat = predict(mod, test_x, validate_features = TRUE)
+  
+  print(sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2)))
+  es15_rmsles[f]=sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2))
+  
+}
+
+# use learning rate 0.3
+# use 15 early stopping rounds
 
