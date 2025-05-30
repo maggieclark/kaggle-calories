@@ -10,6 +10,12 @@ train = read_csv('train.csv')
 male = train %>% filter(Sex == 'male')
 female = train %>% filter(Sex == 'female')
 
+# outcome
+
+train %>% 
+  ggplot(aes(x=Calories)) +
+  geom_histogram()
+
 # even split male and female
 # female category more calories
 # male category more variance
