@@ -1,6 +1,7 @@
 library(xgboost)
 library(dplyr)
 library(readr)
+library(nnet)
 
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
@@ -346,3 +347,92 @@ yhat = predict(mod, test_dataset, validate_features = TRUE)
 submission = data.frame(id=test$id, Calories=yhat)
 
 write_csv(submission, 'mc_submission_5.29_1.csv')
+
+### xgboost with dart ###
+
+# 15 early stopping rounds
+
+folds = list(fold1, fold2, fold3, fold4, fold5)
+
+#droprates = c(0.05, 0.1, 0.15, 0.2, 0.3)
+
+learning_rates = c(0.1, 0.2, 0.3, 0.4, 0.6)
+
+dart_es15_rmsles = c(99,99,99,99,99)
+
+for (f in 2:5){
+  
+  print(f)
+  
+  # complete training data for this fold
+  training_folds = train %>% 
+    anti_join(folds[[f]], by=join_by(id))
+  print('training folds complete')
+  
+  # eval data for this fold (subset of training)
+  eval_index = sample(1:600000, 120000)
+  
+  eval_dataset = training_folds[eval_index,]
+  
+  eval_mat = xgb.DMatrix(data=as.matrix(eval_dataset[,c(2:7,9)]),
+                         label=as.matrix(eval_dataset[,8]))
+  
+  print('eval data complete')
+  
+  # remaining training data
+  train_dataset = training_folds[-eval_index,]
+  
+  train_mat = xgb.DMatrix(data=as.matrix(train_dataset[,c(2:7,9)]),
+                          label=as.matrix(train_dataset[,8]))
+  
+  print('training data complete')
+  
+  
+  # test data (f)
+  test_x = folds[[f]] %>% 
+    dplyr::select(!c(id, Calories)) %>% 
+    as.matrix()
+  
+  print('test data complete')
+  
+  # model
+  
+  lr = learning_rates[f]
+  print(lr)
+  
+  w = list(train=train_mat, eval=eval_mat)
+  
+  mod <- xgb.train(booster = 'dart',
+                   data = train_mat,
+                   nrounds = 1000,
+                   watchlist = w,
+                   early_stopping_rounds=15,
+                   objective="reg:squaredlogerror",
+                   learning_rate=lr,
+                   rate_drop = 0.1,
+                   skip_drop = 0.8)
+  
+  print('model trained')
+  
+  num_round = mod$best_iteration
+  
+  yhat = predict(mod, test_x, validate_features = TRUE, iteration_range=0:num_round)
+  
+  print(sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2)))
+  dart_es15_rmsles[f]=sqrt(mean((log(1+yhat)-log(1+folds[[f]]$Calories))^2))
+  
+}
+
+### nn ###
+
+# apply log(ytrain+1) and call it z
+
+# train net using rmse and z
+
+# predict zhat using model
+
+# apply exp(zhat)-1 to reverse transform into yhat
+
+# clip at 0
+
+model <- nnet(y ~ x1 + x2, data = train_data, size = 5, maxit = 1000, linout = TRUE)
